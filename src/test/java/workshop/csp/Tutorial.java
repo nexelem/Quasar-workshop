@@ -4,20 +4,17 @@ import co.paralleluniverse.fibers.Fiber;
 import co.paralleluniverse.fibers.FiberForkJoinScheduler;
 import co.paralleluniverse.fibers.FiberScheduler;
 import co.paralleluniverse.fibers.SuspendExecution;
-import co.paralleluniverse.strands.SuspendableRunnable;
 import co.paralleluniverse.strands.channels.Channel;
 import co.paralleluniverse.strands.channels.Channels;
 import co.paralleluniverse.strands.channels.ReceivePort;
-import com.google.common.base.Function;
-
-import static co.paralleluniverse.strands.channels.Channels.*;
-import static org.assertj.core.api.Assertions.assertThat;
-
 import com.ning.http.client.Response;
 import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
+
+import static co.paralleluniverse.strands.channels.Channels.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class Tutorial {
 
@@ -54,13 +51,7 @@ public class Tutorial {
         // One can use classics from functional programming world: map/flatMap/filter:
         final Channel<Integer> ch = newChannel(-1);
 
-        final ReceivePort<String> transformedChannel = map(ch, new Function<Integer, String>() {
-
-            @Override
-            public String apply(Integer i) {
-                return i.toString();
-            }
-        });
+        final ReceivePort<String> transformedChannel = map(ch, i -> i.toString());
 
         ch.send(42);
         assertThat(transformedChannel.receive()).isEqualTo("42");
@@ -94,33 +85,27 @@ public class Tutorial {
         final Channel<Long> ch3 = newChannel(bufferSize, OverflowPolicy.BLOCK);
         final Channel<String> chThread = newChannel(-1);
 
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    chThread.send(Thread.currentThread().getName());
-                    ch1.send(1L);
+        new Thread(() -> {
+            try {
+                chThread.send(Thread.currentThread().getName());
+                ch1.send(1L);
 
-                    ch1.send(ch2.receive() + 1);
+                ch1.send(ch2.receive() + 1);
 
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
         }).start();
 
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    chThread.send(Thread.currentThread().getName());
-                    ch2.send(ch1.receive() * 2);
+        new Thread(() -> {
+            try {
+                chThread.send(Thread.currentThread().getName());
+                ch2.send(ch1.receive() * 2);
 
-                    ch3.send(ch1.receive() * 2);
+                ch3.send(ch1.receive() * 2);
 
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
         }).start();
 
@@ -155,33 +140,27 @@ public class Tutorial {
         final Channel<Long> ch3 = newChannel(bufferSize, OverflowPolicy.BLOCK);
         final Channel<String> chThread = newChannel(-1);
 
-        Fiber fib1 = new Fiber(scheduler, new SuspendableRunnable() {
-            @Override
-            public void run() throws SuspendExecution, InterruptedException {
-                try {
-                    chThread.send(Thread.currentThread().getName());
-                    ch1.send(1L);
+        Fiber fib1 = new Fiber(scheduler, () -> {
+            try {
+                chThread.send(Thread.currentThread().getName());
+                ch1.send(1L);
 
-                    ch1.send(ch2.receive() + 1);
+                ch1.send(ch2.receive() + 1);
 
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
         }).start();
 
-        Fiber fib2 = new Fiber(scheduler, new SuspendableRunnable() {
-            @Override
-            public void run() throws SuspendExecution, InterruptedException {
-                try {
-                    chThread.send(Thread.currentThread().getName());
-                    ch2.send(ch1.receive() * 2);
+        Fiber fib2 = new Fiber(scheduler, () -> {
+            try {
+                chThread.send(Thread.currentThread().getName());
+                ch2.send(ch1.receive() * 2);
 
-                    ch3.send(ch1.receive() * 2);
+                ch3.send(ch1.receive() * 2);
 
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
         }).start();
 
@@ -205,17 +184,14 @@ public class Tutorial {
         final Channel<Long> ch2 = newChannel(1);
         final Channel<Long> chOut = newChannel(1);
 
-        Fiber fib1 = new Fiber(new SuspendableRunnable() {
-            @Override
-            public void run() throws SuspendExecution, InterruptedException {
-                try {
-                    ReceivePort<Long> any = Channels.group(ch1, ch2);
+        Fiber fib1 = new Fiber(() -> {
+            try {
+                ReceivePort<Long> any = Channels.group(ch1, ch2);
 
-                    chOut.send(any.receive());
+                chOut.send(any.receive());
 
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
         }).start();
 
