@@ -1,4 +1,4 @@
-Quasar workshop (Java 7)
+Quasar workshop
 =======================
 
 Java 7 part of the Beyond Futures and Actors @Warsjawa workshop.
@@ -6,7 +6,8 @@ Java 7 part of the Beyond Futures and Actors @Warsjawa workshop.
 Getting started
 ===============
 
-* `git clone git@github.com:maciejjaskowski/Quasar-workshop-Java-7-.git`
+* `git clone git@github.com:maciejjaskowski/Quasar-workshop.git`
+* [recommended] for Java 8 do: `git checkout java8`
 * `cd Quasar-workshop-Java-7-`
 * `mvn compile` #Have you installed maven2?
 * Import the project to your IDE (preferably as maven project).
