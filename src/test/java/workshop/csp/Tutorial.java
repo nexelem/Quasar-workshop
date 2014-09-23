@@ -21,13 +21,14 @@ import java.io.IOException;
 
 public class Tutorial {
 
-    // Before Running this Tutorial, please make sure
-    // That you have the -javagent flag set up properly as VM arguments
+    // Have you setup the -javagent flag set up properly as VM arguments?
     // In my case I had to write:
     // -javaagent:/Users/maciej/.m2/repository/co/paralleluniverse/quasar-core/0.6.0/quasar-core-0.6.0.jar
+    //
+    // Now you can run these tests.
 
     // Please, start the tutorial by inspecting the tests below, playing around with them and filling in the exercises.
-    
+
 
     @Test
     public void channel_is_like_a_fifo_queue() throws Exception {
@@ -44,7 +45,7 @@ public class Tutorial {
     }
 
     @Test
-    public void exercise1() throws Exception {
+    public void exercise1_empty_channel() throws Exception {
         // EXERCISE 1: What will happen if one tries to .receive() message before anything is ready in channel?
     }
 
@@ -67,7 +68,7 @@ public class Tutorial {
     }
 
     @Test @Ignore
-    public void exercise2() throws Exception {
+    public void exercise2_filtering() throws Exception {
         final Channel<Integer> chInt = newChannel(-1);
 
         // Un-@Ignore this test and fix the following line so that the test passes
@@ -131,7 +132,7 @@ public class Tutorial {
     }
 
     @Test
-    public void exercise3() throws Exception {
+    public void exercise3_unbuffered_channel() throws Exception {
         // Verify what is going to happen if one creates an unbuffered channel and puts there an abundance of messages?
     }
 
