@@ -16,4 +16,4 @@ Getting started
 To verify that everything is ok:
 * Run `Tutorial` as test - all tests should pass without errors.
 
-Note! Do git pull origin master before the workshop!
+Note! Do `git pull origin master` before the workshop!
