@@ -1,7 +1,7 @@
 Quasar workshop
 =======================
 
-Java 7 part of the Beyond Futures and Actors @Warsjawa workshop.
+Java 7/8 part of the Beyond Futures and Actors @Warsjawa workshop.
 
 Getting started
 ===============
