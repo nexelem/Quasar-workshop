@@ -5,12 +5,16 @@ import co.paralleluniverse.fibers.FiberForkJoinScheduler;
 import co.paralleluniverse.fibers.FiberScheduler;
 import co.paralleluniverse.fibers.SuspendExecution;
 import co.paralleluniverse.strands.channels.*;
+import com.codepoetics.protonpack.StreamUtils;
 import com.ning.http.client.Response;
 import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Random;
+import java.util.stream.LongStream;
+import java.util.stream.Stream;
 
 import static co.paralleluniverse.strands.channels.Channels.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -43,14 +47,29 @@ public class Tutorial {
 
     }
 
-    @Test
+    @Ignore
+    @Test(timeout =  1000L)
     public void exercise1_empty_channel() throws Exception {
         // EXERCISE 1: What will happen if one tries to .receive() message before anything is ready in channel?
+        final Channel<Object> channel = newChannel(-1);
+        final Object obj = channel.receive();
+        assertThat(obj == null);
     }
 
-    @Test
+    @Ignore
+    @Test(timeout = 100000L)
     public void exercise1a_unbuffered_channel() throws Exception {
         // Verify what is going to happen if one creates an unbuffered channel and puts there an abundance of messages?
+        final Channel<Long> longChannel = newChannel(-1);
+
+        final Random random = new Random();
+        LongStream.generate(random::nextLong).forEach( randomLong -> {
+            try {
+                longChannel.send(randomLong);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
     }
 
 
@@ -66,12 +85,12 @@ public class Tutorial {
 
     }
 
-    @Test @Ignore
+    @Test
     public void exercise2_filtering() throws Exception {
         final Channel<Integer> chInt = newChannel(-1);
 
         // Un-@Ignore this test and fix the following line so that the test passes
-        final ReceivePort<Integer> chFiltered = null;
+        final ReceivePort<Integer> chFiltered = filter(chInt, n -> n % 2 == 0);
 
         chInt.send(0);
         chInt.send(1);
@@ -81,7 +100,7 @@ public class Tutorial {
         assertThat(chFiltered.receive()).isEqualTo(2);
     }
 
-    @Test @Ignore
+    @Test
     public void exercise_2a() throws Exception {
       // modify the implementation of SuspendableAction2 so that a sum of values sent to chInt is sent to sendPort once
       // chInt gets closed.
@@ -91,15 +110,29 @@ public class Tutorial {
       final Channel<Integer> chSum = newChannel(1); //
 
       Channels.fiberTransform(chInt, chSum, (receivePort, sendPort) -> {
-        // fill in
+          final SendPort<Integer> castSendPort = (SendPort<Integer>)sendPort;
+          final int sum = StreamUtils.takeWhile(
+                  Stream.generate(() -> {
+                      try {
+                          final Integer received = (Integer)receivePort.receive();
+                          return (int) received;
+                      } catch (Exception e) {
+                          return 0;
+                      }
+                  }),
+                  n -> !receivePort.isClosed())
+                  .mapToInt(obj -> obj.intValue())
+                  .sum();
+          castSendPort.send(sum);
       });
 
       chInt.send(1);
-      chInt.send(1);
-      chInt.send(1);
-      chInt.send(1);
+      chInt.send(2);
+      chInt.send(3);
+      chInt.send(4);
+      chInt.send(5);
       chInt.close(); //Note I am closing channel here!
-      assertThat(chSum.receive()).isEqualTo(4);
+      assertThat(chSum.receive()).isEqualTo(10);
       assertThat(chSum.receive()).isEqualTo(null);
     }
 
@@ -133,7 +166,7 @@ public class Tutorial {
 
     }
 
-    @Test @Ignore
+    @Test
     public void exercise3() throws Exception {
         // Change the body of Runnable in Thread so, that the thread.join() doesn't block the the test
         // make use of the poisonPillCh!
@@ -147,8 +180,9 @@ public class Tutorial {
 
         Thread thread = new Thread(() -> {
             try {
-                while (true) {
+                while (!ch1.isClosed()) {
                     chResult.send(ch1.receive() + 2);
+                    System.out.println("Executed !");
                     Thread.sleep(100);
                 }
 
@@ -161,6 +195,7 @@ public class Tutorial {
         ch1.send(1L);
         ch1.send(2L);
         poisonPillCh.send(1L);
+        ch1.close();
 
         thread.join();
 
@@ -280,6 +315,10 @@ public class Tutorial {
             }
         }).start();
 
+        ch1.send(1L);
+        ch2.send(1L);
+
+        assertThat(chOut.receive() == 2L);
     }
 
     @Test
