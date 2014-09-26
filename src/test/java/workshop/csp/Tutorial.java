@@ -4,10 +4,10 @@ import co.paralleluniverse.fibers.Fiber;
 import co.paralleluniverse.fibers.FiberForkJoinScheduler;
 import co.paralleluniverse.fibers.FiberScheduler;
 import co.paralleluniverse.fibers.SuspendExecution;
+import co.paralleluniverse.strands.Strand;
+import co.paralleluniverse.strands.SuspendableAction2;
 import co.paralleluniverse.strands.SuspendableRunnable;
-import co.paralleluniverse.strands.channels.Channel;
-import co.paralleluniverse.strands.channels.Channels;
-import co.paralleluniverse.strands.channels.ReceivePort;
+import co.paralleluniverse.strands.channels.*;
 import com.google.common.base.Function;
 
 import static co.paralleluniverse.strands.channels.Channels.*;
@@ -18,6 +18,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 public class Tutorial {
 
@@ -28,6 +29,9 @@ public class Tutorial {
     // Now you can run these tests.
 
     // Please, start the tutorial by inspecting the tests below, playing around with them and filling in the exercises.
+
+
+    // Documentation: http://docs.paralleluniverse.co/quasar/
 
 
     @Test
@@ -48,6 +52,12 @@ public class Tutorial {
     public void exercise1_empty_channel() throws Exception {
         // EXERCISE 1: What will happen if one tries to .receive() message before anything is ready in channel?
     }
+
+    @Test
+    public void exercise1a_unbuffered_channel() throws Exception {
+        // Verify what is going to happen if one creates an unbuffered channel and puts there an abundance of messages?
+    }
+
 
     @Test
     public void one_can_apply_map_to_channel() throws Exception {
@@ -82,11 +92,102 @@ public class Tutorial {
         assertThat(chFiltered.receive()).isEqualTo(2);
     }
 
-    @Test
-    public void buferred_channels() throws Exception {
+    @Test @Ignore
+    public void exercise_2a() throws Exception {
+      // modify the implementation of SuspendableAction2 so that a sum of values sent to chInt is sent to sendPort once
+      // chInt gets closed.
+      // chSum should be closed immediately afterwards
 
-        // You can limit the buffer size of channel you create.
-        // Once the channel is full, the next send() operation will block the thread:
+      final Channel<Integer> chInt = newChannel(-1);
+      final Channel<Integer> chSum = newChannel(1); //
+
+      Channels.fiberTransform(chInt, chSum, new SuspendableAction2<ReceivePort<Integer>, SendPort<Integer>>() {
+          @Override
+          public void call(ReceivePort<Integer> receivePort, SendPort<Integer> sendPort) throws SuspendExecution, InterruptedException {
+            // fill in
+          }
+      });
+
+      chInt.send(1);
+      chInt.send(1);
+      chInt.send(1);
+      chInt.send(1);
+      chInt.close(); //Note I am closing channel here!
+      assertThat(chSum.receive()).isEqualTo(4);
+      assertThat(chSum.receive()).isEqualTo(null);
+    }
+
+    @Test
+    public void receive_from_multiple_channels() throws Exception {
+
+        // Sometimes you need to receive from multiple channels at the same time.
+
+        final Channel<String> ch1 = newChannel(-1);
+        final Channel<String> ch2 = newChannel(-1);
+        final Channel<String> chResult = newChannel(-1);
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    while (true) {
+                        SelectAction<String> selected = Selector.select(Selector.receive(ch1), Selector.receive(ch2));
+
+                        chResult.send(selected.message());
+                    }
+
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }).start();
+
+        ch1.send("Message to ch1");
+        ch1.send("Message to ch2");
+
+        assertThat(Arrays.asList(chResult.receive(), chResult.receive()))
+                .containsOnly("Message to ch1", "Message to ch2");
+
+    }
+
+    @Test @Ignore
+    public void exercise3() throws Exception {
+        // Change the body of Runnable in Thread so, that the thread.join() doesn't block the the test
+        // make use of the poisonPillCh!
+        //
+        // Alternatively, instead of poisonPillCh.send(1L) one could ch1.close() the channel.
+        // What's the difference between those two solutions?
+
+        final Channel<Long> ch1 = newChannel(-1);
+        final Channel<Long> poisonPillCh = newChannel(-1);
+        final Channel<Long> chResult = newChannel(-1);
+
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    while (true) {
+                        chResult.send(ch1.receive() + 2);
+                        Thread.sleep(100);
+                    }
+
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+        thread.start();
+
+        ch1.send(1L);
+        ch1.send(2L);
+        poisonPillCh.send(1L);
+
+        thread.join();
+
+    }
+
+    @Test
+    public void a_talk_between_threads() throws Exception {
 
         int bufferSize = 1;
         final Channel<Long> ch1 = newChannel(bufferSize, OverflowPolicy.BLOCK);
@@ -129,11 +230,6 @@ public class Tutorial {
         // As expected: two threads were needed to run this code:
         assertThat(chThread.receive()).isNotEqualTo(chThread.receive());
 
-    }
-
-    @Test
-    public void exercise3_unbuffered_channel() throws Exception {
-        // Verify what is going to happen if one creates an unbuffered channel and puts there an abundance of messages?
     }
 
     @Test
